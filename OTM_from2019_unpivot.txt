@@ -1,0 +1,60 @@
+DECLARE @YEAR_PERIOD INT = 201813;  --- filter from 2019, so each phase will greater than 201813 (201901 until stop) ---
+
+SELECT [Panel], [Category_Code], [Category], 
+		FORMAT( CONVERT(DATETIME, CONCAT([YEAR_PurchaseDate],'-',[MONTH_PurchaseDate],'-',[DAY_PurchaseDate])), 'yyyy-MMMM-dd') AS [PurchaseDate], 
+		--- more specified purchase_dates if needed ---
+
+		[YEAR_PurchaseDate], 
+		--[MONTH_PurchaseDate], [DAY_PurchaseDate], --- more specified purchase_dates if needed ---
+
+		[Brand_Name], 
+		[Records], [Period]
+FROM (
+
+SELECT Pur_Panel AS [Panel], 
+
+		Cat_Code AS [Category_Code], Cat_Description AS [Category],
+
+		LEFT(Pur_YPW_on_extract, 4) AS [Year_YPW], 
+
+		--LEFT(PurchaseDate, 4) AS [YEAR_PurchaseDate],					--- more specified purchase_dates if needed ---
+		--SUBSTRING(CAST(PurchaseDate AS VARCHAR) , 5, 2) AS [MONTH_PurchaseDate],	--- more specified purchase_dates if needed ---
+		--RIGHT(PurchaseDate, 2) AS [DAY_PurchaseDate],					--- more specified purchase_dates if needed ---
+
+		(CASE 
+			WHEN B.Ref_att01 > 1 THEN 'Brand'
+			WHEN B.Ref_att01 = 1 THEN 'Others'
+		END) AS [Brand_Name], 
+
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '01' THEN 1 ELSE 0 END) AS [Period_01], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '02' THEN 1 ELSE 0 END) AS [Period_02], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '03' THEN 1 ELSE 0 END) AS [Period_03], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '04' THEN 1 ELSE 0 END) AS [Period_04], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '05' THEN 1 ELSE 0 END) AS [Period_05], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '06' THEN 1 ELSE 0 END) AS [Period_06], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '07' THEN 1 ELSE 0 END) AS [Period_07], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '08' THEN 1 ELSE 0 END) AS [Period_08], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '09' THEN 1 ELSE 0 END) AS [Period_09], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '10' THEN 1 ELSE 0 END) AS [Period_10], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '11' THEN 1 ELSE 0 END) AS [Period_11], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '12' THEN 1 ELSE 0 END) AS [Period_12], 
+		SUM(CASE WHEN SUBSTRING(Pur_YPW_on_extract, 5, 2) = '13' THEN 1 ELSE 0 END) AS [Period_13], 
+		--,COUNT(*) AS [Total]
+FROM AC35 AS A JOIN reference AS B
+					ON A.Ref_Item_Code = B.Ref_Item_Code
+				JOIN Category AS C
+					ON A.Pur_Category = C.Cat_Code
+		WHERE Pur_isdeleted = 0 
+		AND LEFT(Pur_YPW_on_extract, 6) > @YEAR_PERIOD
+
+		AND EXISTS (SELECT Pur_PurchaseDate FROM purchase AS B WHERE B.Pur_PurchaseId = A.Old_PurchaseId)
+GROUP BY Pur_Panel, Cat_Code, Cat_Description, LEFT(PurchaseDate, 4), (CASE WHEN B.Ref_att01 > 1 THEN 'Brand' 
+									WHEN B.Ref_att01 = 1 THEN 'Others' END) --,PurchaseDate
+
+ 
+	)  AS t UNPIVOT ( Records FOR [Period] IN
+				(Period_01, Period_02, Period_03, Period_04, Period_05, Period_06, Period_07, Period_08, Period_09, Period_10, Period_11, Period_12, Period_13) --,Total)
+							) AS unpvt
+WHERE [Records] >= 1
+
+ORDER BY [Panel], [Category_Code], [Brand_Name], [YEAR_PurchaseDate];
